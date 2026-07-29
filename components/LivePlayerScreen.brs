@@ -1,87 +1,89 @@
-' LivePlayerScreen — full-screen live TV with channel switching and free-time tracking
+' LivePlayerScreen — category-based live TV with top category bar
+'
+' State:
+'   m.state.categoryIndex  — active category (0-based)
+'   m.state.channelIndex   — active channel within category (0-based)
+'   m.state.focusArea      — "player" | "categories"
 
 sub init()
-    m.scene = m.top.getScene()
-    m.video = m.top.findNode("liveVideo")
-    m.bufferingSpinner = m.top.findNode("bufferingSpinner")
-    m.channelOverlay = m.top.findNode("channelOverlay")
-    m.channelNumberLabel = m.top.findNode("channelNumberLabel")
-    m.channelNameLabel = m.top.findNode("channelNameLabel")
-    m.errorLabel = m.top.findNode("errorLabel")
-    m.overlayHideTimer = m.top.findNode("overlayHideTimer")
-    m.usageTickTimer = m.top.findNode("usageTickTimer")
+    m.scene             = m.top.getScene()
+    m.video             = m.top.findNode("liveVideo")
+    m.categoryBar       = m.top.findNode("categoryBar")
+    m.bufferingSpinner  = m.top.findNode("bufferingSpinner")
+    m.channelOverlay    = m.top.findNode("channelOverlay")
+    m.channelNumberLabel= m.top.findNode("channelNumberLabel")
+    m.channelNameLabel  = m.top.findNode("channelNameLabel")
+    m.errorLabel        = m.top.findNode("errorLabel")
+    m.overlayHideTimer  = m.top.findNode("overlayHideTimer")
+    m.usageTickTimer    = m.top.findNode("usageTickTimer")
 
-    m.maxPlaybackRetries = 3
-    m.playbackRetryCount = 0
-    m.switchInProgress = false
+    m.maxRetries        = 3
+    m.retryCount        = 0
 
-    if m.global.currentChannelIndex = invalid
-        m.global.currentChannelIndex = 0
-    end if
-
-    m.video.observeField("state", "onVideoStateChanged")
-    m.video.observeField("errorCode", "onVideoError")
-    m.overlayHideTimer.observeField("fire", "onOverlayHideTimerFire")
-    m.usageTickTimer.observeField("fire", "onUsageTickTimerFire")
-    m.top.observeField("visible", "onVisibleChanged")
+    ' Central state object
+    m.state = {
+        categoryIndex: 0
+        channelIndex:  0
+        focusArea:     "player"
+    }
 
     m.bufferingSpinner.poster.uri = "pkg:/images/loader.png"
 
-    m.top.setFocus(true)
+    m.video.observeField("state",     "onVideoStateChanged")
+    m.video.observeField("errorCode", "onVideoError")
+    m.overlayHideTimer.observeField("fire", "onOverlayHideTimerFire")
+    m.usageTickTimer.observeField("fire",   "onUsageTickTimerFire")
+    m.top.observeField("visible",           "onVisibleChanged")
+    m.categoryBar.observeField("selectedIndex",     "onCategoryBarIndexChanged")
+    m.categoryBar.observeField("categoryConfirmed", "onCategoryConfirmed")
+
+    giveFocusToPlayer()
+    playCurrentChannel(true)
+end sub
+
+' ─── Focus helpers ───────────────────────────────────────────────────────────
+
+sub giveFocusToPlayer()
+    m.state.focusArea = "player"
     m.video.setFocus(true)
-    playChannel(m.global.currentChannelIndex, true)
 end sub
 
-sub onVisibleChanged()
-    if m.top.visible
-        if not isUserPro() and not HasFreeTimeRemaining()
-            onFreeTimeExpired()
-            return
-        end if
-        if isUserPro() or HasFreeTimeRemaining()
-            m.video.setFocus(true)
-            if m.video.state = "playing"
-                ResumeUsageTracking()
-                startUsageTickTimer()
-            end if
-        end if
-    else
-        ' Pause lifetime timer when another screen covers live TV (e.g. subscription)
-        pausePlaybackAndTimer()
-    end if
+sub giveFocusToCategoryBar()
+    m.state.focusArea = "categories"
+    m.categoryBar.setFocus(true)
 end sub
 
-sub playChannel(channelIndex as Integer, showOverlay as Boolean)
-    channel = GetLiveChannel(channelIndex)
-    if channel = invalid
-        return
-    end if
+' ─── Playback ────────────────────────────────────────────────────────────────
 
-    m.switchInProgress = true
-    m.playbackRetryCount = 0
+sub playCurrentChannel(showOverlay as Boolean)
+    channel = GetChannel(m.state.categoryIndex, m.state.channelIndex)
+    if channel = invalid then return
+
+    m.retryCount  = 0
     m.errorLabel.visible = false
-    m.global.currentChannelIndex = channelIndex
 
-    ' Reuse the same Video node — stop, swap content, play immediately
     m.video.control = "stop"
     content = CreateObject("roSGNode", "ContentNode")
-    content.url = channel.streamUrl
+    content.url          = channel.url
     content.streamformat = "hls"
-    content.title = channel.title
-    m.video.content = content
-    m.video.visible = true
-    m.video.control = "play"
-    m.video.setFocus(true)
+    content.title        = channel.title
+    m.video.content  = content
+    m.video.visible  = true
+    m.video.control  = "play"
 
     if showOverlay
-        showChannelOverlay(channelIndex, channel.title)
+        showChannelOverlay()
     end if
 end sub
 
-sub showChannelOverlay(channelIndex as Integer, channelTitle as String)
-    m.channelNumberLabel.text = "Channel " + (channelIndex + 1).ToStr()
-    m.channelNameLabel.text = channelTitle
-    m.channelOverlay.visible = true
+sub showChannelOverlay()
+    channel = GetChannel(m.state.categoryIndex, m.state.channelIndex)
+    if channel = invalid then return
+    cats = GetCategoryList()
+    catTitle = cats[m.state.categoryIndex].title
+    m.channelNumberLabel.text = catTitle + " · Ch " + (m.state.channelIndex + 1).ToStr()
+    m.channelNameLabel.text   = channel.title
+    m.channelOverlay.visible  = true
     m.overlayHideTimer.control = "start"
 end sub
 
@@ -90,19 +92,51 @@ sub onOverlayHideTimerFire()
     m.overlayHideTimer.control = "stop"
 end sub
 
+' ─── Category bar observers ───────────────────────────────────────────────────
+
+' Called whenever user moves left/right on the category bar.
+' Immediately load the new category and auto-play its first channel.
+sub onCategoryBarIndexChanged()
+    newCat = m.categoryBar.selectedIndex
+    if newCat = m.state.categoryIndex then return
+    m.state.categoryIndex = newCat
+    m.state.channelIndex  = 0
+    playCurrentChannel(true)
+end sub
+
+' Called when user presses DOWN or OK on the category bar — return to player.
+sub onCategoryConfirmed()
+    giveFocusToPlayer()
+end sub
+
+' ─── Video state ─────────────────────────────────────────────────────────────
+
+sub onVisibleChanged()
+    if m.top.visible
+        if not isUserPro() and not HasFreeTimeRemaining()
+            onFreeTimeExpired()
+            return
+        end if
+        m.video.setFocus(true)
+        if m.video.state = "playing"
+            ResumeUsageTracking()
+            startUsageTickTimer()
+        end if
+    else
+        pausePlaybackAndTimer()
+    end if
+end sub
+
 sub onVideoStateChanged()
     state = m.video.state
-
     if state = "buffering"
         m.bufferingSpinner.visible = true
         PauseUsageTracking()
         stopUsageTickTimer()
     else if state = "playing"
         m.bufferingSpinner.visible = false
-        m.errorLabel.visible = false
-        m.switchInProgress = false
-        m.playbackRetryCount = 0
-
+        m.errorLabel.visible       = false
+        m.retryCount               = 0
         if isUserPro() or HasFreeTimeRemaining()
             ResumeUsageTracking()
             startUsageTickTimer()
@@ -128,20 +162,18 @@ sub onVideoError()
 end sub
 
 sub handlePlaybackFailure()
-    if m.playbackRetryCount < m.maxPlaybackRetries
-        m.playbackRetryCount = m.playbackRetryCount + 1
+    if m.retryCount < m.maxRetries
+        m.retryCount = m.retryCount + 1
         m.video.control = "play"
         return
     end if
-
     m.errorLabel.visible = true
-    m.switchInProgress = false
 end sub
 
+' ─── Usage timer ─────────────────────────────────────────────────────────────
+
 sub startUsageTickTimer()
-    if isUserPro()
-        return
-    end if
+    if isUserPro() then return
     m.usageTickTimer.control = "start"
 end sub
 
@@ -157,19 +189,13 @@ sub pausePlaybackAndTimer()
     end if
 end sub
 
-' Fires every second while video is actively playing (free users only)
 sub onUsageTickTimerFire()
     if isUserPro()
         stopUsageTickTimer()
         return
     end if
-
-    if m.global.isPlaying <> true or m.video.state <> "playing"
-        return
-    end if
-
-    stillHasTime = TickUsageSecond()
-    if not stillHasTime
+    if m.global.isPlaying <> true or m.video.state <> "playing" then return
+    if not TickUsageSecond()
         onFreeTimeExpired()
     end if
 end sub
@@ -177,43 +203,40 @@ end sub
 sub onFreeTimeExpired()
     PauseUsageTracking()
     stopUsageTickTimer()
-    m.video.control = "stop"
-    m.video.visible = false
+    m.video.control  = "stop"
+    m.video.visible  = false
     m.top.timeExpired = true
     m.scene.callFunc("ShowSubscriptionScreen")
 end sub
 
-sub switchToNextChannel()
-    nextIndex = GetNextChannelIndex(m.global.currentChannelIndex)
-    playChannel(nextIndex, true)
-end sub
-
-sub switchToPreviousChannel()
-    prevIndex = GetPreviousChannelIndex(m.global.currentChannelIndex)
-    playChannel(prevIndex, true)
-end sub
+' ─── Remote navigation ───────────────────────────────────────────────────────
 
 function OnKeyEvent(key as String, press as Boolean) as Boolean
-    if not press
-        return false
-    end if
+    if not press then return false
 
-    if key = "right"
-        switchToNextChannel()
-        return true
-    else if key = "left"
-        switchToPreviousChannel()
-        return true
-    else if key = "back"
-        ' Keep user in live TV; only stop if they need to leave the player
-        if m.video.visible
-            m.video.control = "stop"
-            m.video.visible = false
+    if m.state.focusArea = "player"
+        if key = "left"
+            m.state.channelIndex = GetPreviousChannelIndex(m.state.channelIndex, m.state.categoryIndex)
+            playCurrentChannel(true)
+            return true
+        else if key = "right"
+            m.state.channelIndex = GetNextChannelIndex(m.state.channelIndex, m.state.categoryIndex)
+            playCurrentChannel(true)
+            return true
+        else if key = "up"
+            giveFocusToCategoryBar()
+            return true
+        else if key = "back"
+            if m.video.visible
+                m.video.control = "stop"
+                m.video.visible = false
+            end if
+            PauseUsageTracking()
+            stopUsageTickTimer()
+            return true
         end if
-        PauseUsageTracking()
-        stopUsageTickTimer()
-        return true
     end if
 
+    ' Category bar handles its own left/right/down keys via its own OnKeyEvent
     return false
 end function

@@ -12,60 +12,59 @@
   <children>
     <Rectangle width="1920" height="1080" color="0x000000" />
 
-    <!-- UI overlays must be children of Video or they draw underneath playback -->
+    <!-- Category bar sits at top; video fills the rest -->
+    <CategoryBar id="categoryBar" translation="[0,0]" />
+
+    <!--
+      Video starts below the 72-px category bar.
+      height = 1080 - 72 = 1008
+    -->
     <Video
       id="liveVideo"
       width="1920"
-      height="1080"
-      translation="[0,0]"
+      height="1008"
+      translation="[0,72]"
       enableUI="false"
       enableTrickPlay="false">
 
-      <BusySpinner id="bufferingSpinner" translation="[900,490]" visible="false" />
+      <BusySpinner id="bufferingSpinner" translation="[900,454]" visible="false" />
 
-      <Group id="channelOverlay" translation="[60,60]" visible="false">
-        <Rectangle width="520" height="160" color="0x000000" opacity="0.75" />
+      <!-- Channel name overlay (bottom-left of video) -->
+      <Group id="channelOverlay" translation="[60,840]" visible="false">
+        <Rectangle width="560" height="120" color="0x000000" opacity="0.75" />
         <Label
           id="channelNumberLabel"
-          translation="[24,20]"
-          width="472"
-          height="48"
-          color="0xCCCCCC"
-          horizAlign="left"
-          vertAlign="center">
-          <Font role="font" uri="pkg:/components/Fonts/Roboto-Regular.ttf" size="32" />
+          translation="[20,10]"
+          width="520" height="40"
+          color="0xCCCCCCFF"
+          horizAlign="left" vertAlign="center">
+          <Font role="font" uri="pkg:/components/Fonts/Roboto-Regular.ttf" size="26" />
         </Label>
         <Label
           id="channelNameLabel"
-          translation="[24,72]"
-          width="472"
-          height="72"
-          color="0xFFFFFF"
-          wrap="true"
-          maxLines="2"
-          horizAlign="left"
-          vertAlign="top">
-          <Font role="font" uri="pkg:/components/Fonts/Roboto-Regular.ttf" size="40" />
+          translation="[20,54]"
+          width="520" height="56"
+          color="0xFFFFFFFF"
+          wrap="true" maxLines="1"
+          horizAlign="left" vertAlign="top">
+          <Font role="font" uri="pkg:/components/Fonts/Roboto-Regular.ttf" size="36" />
         </Label>
       </Group>
 
       <Label
         id="errorLabel"
-        translation="[260,480]"
-        width="1400"
-        height="120"
+        translation="[260,440]"
+        width="1400" height="120"
         visible="false"
-        color="0xFFFFFF"
-        wrap="true"
-        maxLines="3"
-        horizAlign="center"
-        vertAlign="center"
+        color="0xFFFFFFFF"
+        wrap="true" maxLines="3"
+        horizAlign="center" vertAlign="center"
         text="Unable to play channel.&#xA;Press Left or Right to try another channel.">
         <Font role="font" uri="pkg:/components/Fonts/Roboto-Regular.ttf" size="36" />
       </Label>
     </Video>
 
     <Timer id="overlayHideTimer" duration="2.5" repeat="false" />
-    <Timer id="usageTickTimer" duration="1" repeat="true" />
+    <Timer id="usageTickTimer"   duration="1"   repeat="true" />
   </children>
 </component>
