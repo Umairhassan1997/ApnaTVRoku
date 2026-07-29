@@ -45,11 +45,13 @@ end sub
 
 sub giveFocusToPlayer()
     m.state.focusArea = "player"
+    m.categoryBar.showFocus = false
     m.video.setFocus(true)
 end sub
 
 sub giveFocusToCategoryBar()
     m.state.focusArea = "categories"
+    m.categoryBar.showFocus = true
     m.categoryBar.setFocus(true)
 end sub
 

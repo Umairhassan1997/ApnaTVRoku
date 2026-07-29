@@ -1,25 +1,23 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<component name="CategoryBar" extends="Group">
+<component name="CategoryBar" extends="Group" focusable="true">
   <script type="text/brightscript" uri="pkg:/components/CategoryBar.brs" />
   <script type="text/brightscript" uri="pkg:/components/Managers/ChannelManager.brs" />
 
   <interface>
-    <!-- Set to trigger a category switch; read to get current index -->
     <field id="selectedIndex" type="integer" value="0" alwaysNotify="true" />
-    <!-- Fired when user confirms selection (DOWN or OK pressed on bar) -->
+    <!-- Parent sets true when UP focuses bar; false when DOWN returns to player -->
+    <field id="showFocus" type="boolean" value="false" alwaysNotify="true" />
     <field id="categoryConfirmed" type="boolean" value="false" alwaysNotify="true" />
   </interface>
 
   <children>
-    <!-- Bar background -->
     <Rectangle
       id="barBg"
       width="1920"
-      height="72"
+      height="80"
       color="0x0B1526FF"
       translation="[0,0]" />
 
-    <!-- Tab labels rendered dynamically in BrightScript -->
     <LayoutGroup
       id="tabGroup"
       layoutDirection="horiz"

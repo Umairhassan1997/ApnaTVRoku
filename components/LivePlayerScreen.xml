@@ -16,21 +16,21 @@
     <CategoryBar id="categoryBar" translation="[0,0]" />
 
     <!--
-      Video starts below the 72-px category bar.
-      height = 1080 - 72 = 1008
+      Video starts below the 80-px category bar.
+      height = 1080 - 80 = 1000
     -->
     <Video
       id="liveVideo"
       width="1920"
-      height="1008"
-      translation="[0,72]"
+      height="1000"
+      translation="[0,80]"
       enableUI="false"
       enableTrickPlay="false">
 
-      <BusySpinner id="bufferingSpinner" translation="[900,454]" visible="false" />
+      <BusySpinner id="bufferingSpinner" translation="[900,450]" visible="false" />
 
       <!-- Channel name overlay (bottom-left of video) -->
-      <Group id="channelOverlay" translation="[60,840]" visible="false">
+      <Group id="channelOverlay" translation="[60,820]" visible="false">
         <Rectangle width="560" height="120" color="0x000000" opacity="0.75" />
         <Label
           id="channelNumberLabel"

@@ -7,7 +7,7 @@ function GetCategoryList() as Object
             title: "Urdu"
             channels: [
                 { title: "Dunya News HD",      url: "https://imob.dunyanews.tv/livehd/ngrp:dunyalivehd_2_all/playlist.m3u8" }
-                { title: "News18 Urdu",         url: "https://n18syndication.akamaized.net/bpk-tv/News18_Urdu_NW18_MOB/output01/master.m3u8" }
+                { title: "M-Sports",            url: "https://cdn.rabta.stream/M-Sports/index.m3u8" }
                 { title: "Joo Music",           url: "https://livecdn.live247stream.com/joomusic/tv/playlist.m3u8" }
                 { title: "Urdu Ch 4",           url: "https://cdn-4.pishow.tv/live/229/master.m3u8" }
                 { title: "Madani Channel",      url: "https://streaming.madanichannel.tv/static/streaming-playlists/hls/b9790f10-cb0d-4e30-82bf-84a756234e58/master.m3u8" }
@@ -16,10 +16,12 @@ function GetCategoryList() as Object
                 { title: "Urdu Ch 8",           url: "https://cdn-4.pishow.tv/live/8/master.m3u8" }
                 { title: "Jeremiah TV",         url: "https://x.streamablecloud.com/stream/hls/jeremiahtv/index.m3u8" }
                 { title: "Saazo Awaz",          url: "https://streamer12.vdn.dstreamone.net/saazoawaz/saazoawaz/playlist.m3u8" }
+                { title: "News18 Urdu",         url: "https://n18syndication.akamaized.net/bpk-tv/News18_Urdu_NW18_MOB/output01/master.m3u8" }
+
                 { title: "Filmax",              url: "https://s3.ideationtec.live/Filmax/Filmax.m3u8" }
                 { title: "Disk Kids",           url: "https://vodzong.mjunoon.tv:8087/streamtest/disckids-157-1/playlist.m3u8" }
-                { title: "M-Sports",            url: "https://cdn.rabta.stream/M-Sports/index.m3u8" }
-            ]
+
+                ]
         }
         {
             id: "punjabi"
