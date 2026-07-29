@@ -1,6 +1,7 @@
 sub init()
     InitScreenStack()
     m.top.AppLimit=7
+    m.top.isSubscribed=true
     m.routedOnLaunch=false
     InitUsageTimer()
     m.global.launchRoutePending=true
@@ -183,7 +184,7 @@ sub CallMenuScreen()
 
 end sub
 
-' Routes free/pro users to Live TV or paywall after splash + subscription check
+' Routes to Live TV after splash (no subscription / free-time gate)
 sub RouteOnLaunch()
     if m.routedOnLaunch=true
         return
@@ -196,13 +197,8 @@ sub RouteOnLaunch()
         m.video.visible=false
     end if
 
-    if isUserPro()
-        ShowLivePlayerScreen()
-    else if GetRemainingSeconds()<=0
-        ShowSubscriptionScreen()
-    else
-        ShowLivePlayerScreen()
-    end if
+    m.top.isSubscribed = true
+    ShowLivePlayerScreen()
 end sub
 
 sub hideLandingUi()

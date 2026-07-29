@@ -15,7 +15,6 @@ sub init()
     m.channelNameLabel  = m.top.findNode("channelNameLabel")
     m.errorLabel        = m.top.findNode("errorLabel")
     m.overlayHideTimer  = m.top.findNode("overlayHideTimer")
-    m.usageTickTimer    = m.top.findNode("usageTickTimer")
 
     m.maxRetries        = 3
     m.retryCount        = 0
@@ -32,7 +31,6 @@ sub init()
     m.video.observeField("state",     "onVideoStateChanged")
     m.video.observeField("errorCode", "onVideoError")
     m.overlayHideTimer.observeField("fire", "onOverlayHideTimerFire")
-    m.usageTickTimer.observeField("fire",   "onUsageTickTimerFire")
     m.top.observeField("visible",           "onVisibleChanged")
     m.categoryBar.observeField("selectedIndex",     "onCategoryBarIndexChanged")
     m.categoryBar.observeField("categoryConfirmed", "onCategoryConfirmed")
@@ -115,17 +113,11 @@ end sub
 
 sub onVisibleChanged()
     if m.top.visible
-        if not isUserPro() and not HasFreeTimeRemaining()
-            onFreeTimeExpired()
-            return
-        end if
         m.video.setFocus(true)
-        if m.video.state = "playing"
-            ResumeUsageTracking()
-            startUsageTickTimer()
-        end if
     else
-        pausePlaybackAndTimer()
+        if m.video <> invalid
+            m.video.control = "stop"
+        end if
     end if
 end sub
 
@@ -133,26 +125,14 @@ sub onVideoStateChanged()
     state = m.video.state
     if state = "buffering"
         m.bufferingSpinner.visible = true
-        PauseUsageTracking()
-        stopUsageTickTimer()
     else if state = "playing"
         m.bufferingSpinner.visible = false
         m.errorLabel.visible       = false
         m.retryCount               = 0
-        if isUserPro() or HasFreeTimeRemaining()
-            ResumeUsageTracking()
-            startUsageTickTimer()
-        else
-            onFreeTimeExpired()
-        end if
     else if state = "stopped" or state = "finished" or state = "paused"
         m.bufferingSpinner.visible = false
-        PauseUsageTracking()
-        stopUsageTickTimer()
     else if state = "error"
         m.bufferingSpinner.visible = false
-        PauseUsageTracking()
-        stopUsageTickTimer()
         handlePlaybackFailure()
     end if
 end sub
@@ -170,45 +150,6 @@ sub handlePlaybackFailure()
         return
     end if
     m.errorLabel.visible = true
-end sub
-
-' ─── Usage timer ─────────────────────────────────────────────────────────────
-
-sub startUsageTickTimer()
-    if isUserPro() then return
-    m.usageTickTimer.control = "start"
-end sub
-
-sub stopUsageTickTimer()
-    m.usageTickTimer.control = "stop"
-end sub
-
-sub pausePlaybackAndTimer()
-    PauseUsageTracking()
-    stopUsageTickTimer()
-    if m.video <> invalid
-        m.video.control = "stop"
-    end if
-end sub
-
-sub onUsageTickTimerFire()
-    if isUserPro()
-        stopUsageTickTimer()
-        return
-    end if
-    if m.global.isPlaying <> true or m.video.state <> "playing" then return
-    if not TickUsageSecond()
-        onFreeTimeExpired()
-    end if
-end sub
-
-sub onFreeTimeExpired()
-    PauseUsageTracking()
-    stopUsageTickTimer()
-    m.video.control  = "stop"
-    m.video.visible  = false
-    m.top.timeExpired = true
-    m.scene.callFunc("ShowSubscriptionScreen")
 end sub
 
 ' ─── Remote navigation ───────────────────────────────────────────────────────
@@ -233,8 +174,6 @@ function OnKeyEvent(key as String, press as Boolean) as Boolean
                 m.video.control = "stop"
                 m.video.visible = false
             end if
-            PauseUsageTracking()
-            stopUsageTickTimer()
             return true
         end if
     end if
